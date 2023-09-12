@@ -1,0 +1,133 @@
+The Confluence XML export structure
+-----------------------------------
+
+The file entities.xml contains within the node "hibernate-generic" a flat list
+of objects containing the information about pages, spaces and users.
+
+The following object classes are being made use of to get all pages and their structure:
+
+- "Space"
+- "Page"
+- "BodyContent"
+- "Attachment"
+
+The following classes contain the user information:
+
+- "ConfluenceUserImpl"
+
+The spaces
+---
+
+The root of the directory structure of a space is found by searching for the node '//object[@class="Space"]'.
+
+An example:
+
+<object class="Space" package="com.atlassian.confluence.spaces">
+  <id name="id"> 123456 </id>
+  <property name="name"> My Space </property>
+  <property name="key"> SPC </property>
+  <property name="lowerKey"> spc </property>
+  <property name="description" class="SpaceDescription" package="com.atlassian.confluence.spaces">
+    <id name="id"> 4234 </id>
+  </property>
+  <property name="homePage" class="Page" package="com.atlassian.confluence.pages">
+    <id name="id"> 9203 </id>
+  </property>
+  [...]
+</object>
+
+Some data was left out because it is not being processed by the script. Of interest are the properties with the names "name", "key" and "homePage". While "name" and "key" are self-explaining, the "homePage" contains the content of the homepage of a space. The homepage node is found by searching for '//object[@class="Page"]/id[text()="<homePage id">]/..'.
+
+The page
+---
+
+The page object class contains information about a page, its content and relations (and some other data).
+
+An example:
+
+<object class="Page" package="com.atlassian.confluence.pages">
+  <id name="id"> 12345678 </id>
+  <property name="hibernateVersion">87</property>
+  <property name="title"> My Page </property>
+  <property name="lowerTitle"> my page </property>
+  <collection name="bodyContents" class="java.util.Collection">
+    <element class="BodyContent" package="com.atlassian.confluence.core">
+      <id name="id"> 4321 </id>
+    </element>
+  </collection>
+  [...]
+</object>
+
+Of interest are the properties "name", "title" and "BodyContent". The element "BodyContent" is part of a collection but till now these only contained one element. The historic versions are object nodes on their own.
+
+The body content
+---
+
+The body content object contains the text and data that is displayed when viewing a page.
+
+An example:
+
+<object class="BodyContent" package="com.atlassian.confluence.core">
+  <id name="id"> 4321 </id>
+  <property name="body">
+    shortened for brevity
+  </property>
+  <property name="content" class="Page" package="com.atlassian.confluence.pages">
+    <id name="id"> 54321 </id>
+  </property>
+  <property name="bodyType">2</property>
+</object>
+
+Of interest is the property "body".
+
+The attachments
+---
+
+The "attachment" class object contains information about an attachment file that belongs to a page.
+
+An example:
+
+<object class="Attachment" package="com.atlassian.confluence.pages">
+  <id name="id">101712481</id>
+  <property name="hibernateVersion">3</property>
+  <property name="title"> image.png </property>
+  <property name="lowerTitle"> image.png </property>
+  <collection name="contentProperties" class="java.util.Collection">
+  [...]
+  </collection>
+  <property name="version">1</property>
+  <property name="creator" class="ConfluenceUserImpl" package="com.atlassian.confluence.user">
+    <id name="key">1C1D74FD-92B6-4546-810A-E661E7E265BD</id>
+  </property>
+  <property name="creationDate">2022-10-27 09:13:23.000</property>
+  <property name="lastModifier" class="ConfluenceUserImpl" package="com.atlassian.confluence.user">
+  <id name="key">1C1D74FD-92B6-4546-810A-E661E7E265BD</id>
+  </property>
+  <property name="lastModificationDate">2022-10-27 09:21:44.000</property>
+  <property name="versionComment"></property>
+  <property name="contentStatus">current</property>
+  <property name="containerContent" class="Page" package="com.atlassian.confluence.pages">
+    <id name="id">101712482</id>
+  </property>
+  <property name="space" class="Space" package="com.atlassian.confluence.spaces">
+    <id name="id">1048587</id>
+  </property>
+  <collection name="imageDetailsDTO" class="java.util.Set"/>
+</object>
+
+Of interest are the properties "title","id" and "version". The file data itself is saved inside the attachments folder. It is found when searching for the page id number, then the attachment number. The latest and used file is named after the current version.
+
+Example:
+
+attachments
+  |
+  -- 1234567 (page id)
+     |
+     -- 4321 (attachment id)
+        |
+        -- 1 (version)
+
+Relations and the directory structure
+---
+
+Because the xml structure is flat, the directory structure inside a space has to be reconstructed. The root is the object class "space" itself. But its page children refer to the id of the page of the body content. Therefor all objects has to be searched which point to this id. Then if these pages also have child pages, all other objects again have to be searched for ids pointing to its parents. This way the directory structure is being constructed by linking child pages to its parents. This is (probably) best done using a recursive algorithm.
