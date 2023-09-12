@@ -18,3 +18,6 @@ Example:
 Then run the next script to create an importable set of files for the application.
 Example for wikijs:
 `cat export.yml | perl towikijs.pl`
+
+## Intermediate yaml
+The script xml_to_yml.pl outputs the space structure contained inside a yaml file. The structure already contains the space tree compared to the flat xml export. All attachments from inside the attachments folder are include inside the yaml file base64 encoded.
