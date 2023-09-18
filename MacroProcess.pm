@@ -11,7 +11,7 @@ use XML::LibXML;
 
 binmode STDERR, ':utf8';
 
-my $DEBUG="true";
+my $DEBUG="false";
 
 my $debug = sub {
     my $message = shift @_;
@@ -78,11 +78,18 @@ my $macro_symbols = sub {
 	my $symbol_name = $symbol_node->findvalue('./@ac:name');
 	my $symbol_unicode;
 	for ($symbol_name) {
-	    when (/^tick$/)     { $symbol_unicode = "\N{CHECK MARK}" }
-	    when (/^cross$/)    { $symbol_unicode = "\N{BALLOT X}" }
-	    when (/^question$/) { $symbol_unicode = "?" }
-	    when (/^warning$/)  { $symbol_unicode = "!" }
-	    when (/^smile$/)    { $symbol_unicode = "\N{SLIGHTLY SMILING FACE}" }
+	    when (/^tick$/)		{ $symbol_unicode = "\N{CHECK MARK}" }
+	    when (/^cross$/)		{ $symbol_unicode = "\N{BALLOT X}" }
+	    when (/^question$/)		{ $symbol_unicode = "?" }
+	    when (/^warning$/)		{ $symbol_unicode = "!" }
+	    when (/^information$/)	{ $symbol_unicode = "\N{INFORMATION SOURCE}" }
+	    when (/^smile$/)		{ $symbol_unicode = "\N{SLIGHTLY SMILING FACE}" }
+	    when (/^sad$/)		{ $symbol_unicode = "\N{SLIGHTLY FROWNING FACE}" }
+	    when (/^checky$/)		{ $symbol_unicode = "\N{FACE WITH STUCK-OUT TONGUE}" }
+	    when (/^laugh$/)		{ $symbol_unicode = "\N{SMILING FACE WITH OPEN MOUTH AND SMILING EYES}" }
+	    when (/^wink$/)		{ $symbol_unicode = "\N{WINKING FACE}" }
+	    when (/^thumbs-up$/)	{ $symbol_unicode = "\N{THUMBS UP SIGN}" }
+	    when (/^thumbs-down$/)	{ $symbol_unicode = "\N{THUMBS DOWN SIGN}" }
 	    default       {
 		$symbol_unicode = " ";
 		$debug->("Unknown symbol name: $symbol_name");
