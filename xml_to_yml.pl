@@ -94,17 +94,24 @@ sub process_children {
     # getting the title
     $subtree->{ "title" } = $child->findvalue('./property[@name="title"]');
     debug "set title to " .$subtree->{ "title" }. ".";
-    
-    #getting the body content from another object
+=comment
+
+getting the body content from the "BodyContent" object class
+
+=cut
     my $body_id = $child->findvalue('./collection[@name="bodyContents"]/element[@class="BodyContent"]/id');
     if ( $body_id ){
 	my $body_subtree = $dom->findnodes('//object[@class="BodyContent"]/id[text()="'
 					   .$body_id
 					   .'"]/..');
 	$subtree->{ "body" } = $body_subtree->[0]->findvalue('./property[@name="body"]');
+	 
     }
+=comment
+	
+getting the attachments and appending them as base64 encoded string
 
-    # getting the attachments and appending them as base64 string
+=cut
     if ( length $child->findnodes('./collection[@name="attachments"]') ) {
 	my $attachment_id_string = $child->findvalue('./collection[@name="attachments"]');
 	my @attachment_id_list = split('\n\n',$attachment_id_string);
