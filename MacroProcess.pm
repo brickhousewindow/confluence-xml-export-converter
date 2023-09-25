@@ -3,7 +3,7 @@ package MacroProcess;
 use strict;
 use warnings;
 
-use feature "switch";
+use experimental "switch";
 use Encode qw(decode encode);
 
 use HTML::Entities;
