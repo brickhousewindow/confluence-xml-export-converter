@@ -7,7 +7,7 @@ use feature "state";
 
 binmode STDERR, ':utf8';
 
-my $DEBUG="true";
+my $DEBUG="false";
 
 my $debug = sub {
     my $message = shift @_;
