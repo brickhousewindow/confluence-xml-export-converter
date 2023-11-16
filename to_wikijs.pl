@@ -1,8 +1,12 @@
 #!/usr/bin/perl
 
 use strict;
-use warnings;
+use warnings "all";
 use Cwd;
+use Getopt::Std;
+use utf8;
+use open ':std', ':encoding(UTF-8)';
+use Encode;
 
 BEGIN { unshift @INC, '.'; }
 use MacroProcess;
@@ -11,17 +15,34 @@ use TreeWalk;
 use YAML::XS;
 use File::Slurp;
 use MIME::Types;
+use IPC::Run3 qw( run3 );
+use Sys::Binmode;
 
+use utf8;
 use Carp qw(confess cluck);
 BEGIN {
     *CORE::GLOBAL::warn = \&cluck;
     *CORE::GLOBAL::die = \&confess;
 }
 
-binmode STDOUT, ':utf8';
-binmode STDERR, ':utf8';
 $| = 1;
 my $DEBUG="false";
+
+=comment
+
+switches:
+
+a - inline attachments at the end of the html file
+m - html is converted to markdown before being written to file
+d - enable debug output
+
+=cut
+our ( $opt_d, $opt_m , $opt_a);
+$opt_d=0;
+
+getopts('dm');
+
+$DEBUG="true" if ( $opt_d eq 1 );
 
 =comment
 
@@ -41,11 +62,13 @@ my $DEBUG="false";
            $email
 =cut                  
 
-my $spaces;
-{
-    local $/=undef;
-    $spaces = Load(<STDIN>);
-}
+# my $spaces;
+# {
+#     local $/=undef;
+#     $spaces = Load(<STDIN>);
+# }
+
+my $spaces = YAML::XS::LoadFile("export.yml");
 
 sub process_child;
 sub sanitize_filename;
@@ -64,6 +87,8 @@ sub process_space {
     my @node_list = @TreeWalk::node_list;
     my $signal = "UP";
 
+    my @title_mappings;
+    
     foreach my $node ( @node_list ){
 
 	if ( $node eq "UP" ) {
@@ -94,7 +119,7 @@ inside a space therefor conflicts are not expected.
 
 =cut
 	    if ( $signal eq "UP" ) {
-		my $dir_name = sanitize_name( $node->{ "title" } );
+		my $dir_name = lc( sanitize_name( $node->{ "title" } ));
 		debug("creating and entering directory $dir_name.");
 		mkdir $dir_name
 		    || die "cannot create directory: $!";
@@ -105,17 +130,47 @@ inside a space therefor conflicts are not expected.
 
 	    debug("Processing page with title ".$node->{"title"}.".");
 	    MacroProcess::macros_convert( \%{$node}, \%{ $spaces->{"users"} } );
-	    append_attachments( \%{$node} );
-	    
-	    my $filename = sanitize_name( $node->{ "title" } ) . ".html";
+	    append_attachments( \%{$node} )
+		if (defined $opt_a && $opt_a eq 1);
+	    my $filename;
+	    my $content;
+	    utf8::encode $node->{ "body" };
+	    if ( defined $opt_m && $opt_m eq 1 ){
+		my @pandoc_command = qw ( pandoc --from html --to markdown );
+	        run3( \@pandoc_command,
+		      \$node->{ "body" },
+		      \$content,
+		      \undef, 
+		      { binmode_stdin => ":utf8",
+		    binmode_stdout => ":utf8"} )
+		    || die "could not convert using pandoc program: $?";
+	        $filename = lc( sanitize_name( $node->{ "title" } )) . ".md";
+	    } else {
+	        $filename = lc( sanitize_name( $node->{ "title" } )) . ".html";
+		$content = $node->{ "body" };
+	    }
+	    utf8::encode($filename);
+	    push @title_mappings, "\'" .$node->{ "title" } ."\'|\'" . $filename . "\'";
 	    debug("creating file with filename $filename.");
-	    write_file( $filename,
-			{binmode => ':utf8'},
-			$node->{ "body" }
-		) || die "cannot write to file $filename: $!";
+	    # write_file( $filename,
+	    # 		{binmode => ':utf8'},
+	    # 		$content )
+	    # 	|| die "cannot write to file $filename: $!";
+	    open my $file, '>:encoding(UTF-8)', $filename
+		       || die "cannot open to file $filename: $!";
+	    #binmode $file, ":encoding(UTF-8)";
+	    print {$file} $content;
+	    close $file;
 	    $signal = "";
 	}
     }
+    open my $mappings_file, '>:raw', "title_mappings.txt"
+	|| die "cannot open to file title_mappings.txt: $!";
+    foreach ( @title_mappings ) {
+	utf8::encode( $_ );
+	print $mappings_file "$_\n";
+    }
+    close $mappings_file;
 }
 
 sub sanitize_name {
@@ -127,13 +182,10 @@ that could or can cause problems inside URLs
 and pathnames.
 
 =cut
-    $string =~ tr/\\|^%$?@#//;
-    $string =~ s/&/_and_/g;
-    $string =~ s/\+/_plus_/g;
-    $string =~ s/=/_equal_/g;
-    $string =~ s/[,\/;:]/-/g;
-    $string =~ s/(?:\s)+/_/g;
-    $string =~ tr/[]{}<>/()()()/;
+    $string =~ s/[\$#@~!&*()\[\]<>;,:?^'"`\\\/]//g;
+    $string =~ s/\s-\s/-/g;
+    $string =~ s/(?:\s)+/-/g;
+    $string =~ s/\./-/g;
     return $string
 }
 
