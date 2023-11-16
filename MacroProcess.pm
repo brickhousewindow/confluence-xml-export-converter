@@ -198,7 +198,7 @@ page content.
 
 =cut
     $debug->("Adding outer body tag with namespace information.");
-    my $body_tag_string = '<body xmlns:ac="http://atlassian.confluence" xmlns:ri="http://atlassian.ressource" >';
+    my $body_tag_string = '<body xmlns:ac="http://atlassian.confluence" xmlns:ri="http://atlassian.ressource">';
     my $body = $body_tag_string . $subtree->{ "body" } . "</body>";
     
 =comment
@@ -248,7 +248,8 @@ it is necessary to call this function multiple.
 
 =cut
 
-    while ( $subtree->{ "body" } =~ /&lt;|&gt;|&amp;/ ){
+    while ( $subtree->{ "body" } =~ /&lt;|&gt;|&amp;/
+	    || $subtree->{ "body" } =~ /&([a-z0-9]+|#[0-9]{1,6}|#x[0-9a-fA-F]{1,6});/ig){
 	$debug->("Found encoded entities, decoding these.");
 	decode_entities $subtree->{ "body" };
     }
@@ -257,11 +258,13 @@ it is necessary to call this function multiple.
     
     ###
     #
-    # removing the body tags and the namespace information 
+    # removing the xml declaration, the body tags
+    # and the namespace information 
     #
     $debug->("Removing outer body tags with namespaces.");
-    $subtree->{ "body" } =~ s#$body_tag_string##;
-    $subtree->{ "body" } =~ s#</body>##;
+    $subtree->{ "body" } =~ s#<\?xml\ version\="1\.0"\?>##g;
+    $subtree->{ "body" } =~ s#\Q$body_tag_string\E##g;
+    $subtree->{ "body" } =~ s#</body>##g;
 }
 
 1;
